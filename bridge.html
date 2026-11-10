@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><title>bridge</title>
+<script>
+(async()=>{const f=location.hash.slice(1);const allowed=['https://www.tiktok.com','https://studio.youtube.com'];
+ const target=window.parent!==window?window.parent:window.opener; if(!target||!/^[\w.\-\/]+\.mp4$/.test(f))return;
+ const b=await (await fetch(f)).blob();
+ for(const o of allowed){try{target.postMessage({ssBlob:b,name:f.split('/').pop()},o)}catch(e){}}})();
+</script>

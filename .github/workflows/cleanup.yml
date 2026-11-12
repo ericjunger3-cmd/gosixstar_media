@@ -1,0 +1,29 @@
+name: Clean up posted reels
+# reels/schedule.json maps each file in reels/ to its post time (UTC). Files are deleted 3 h after that time,
+# so Instagram has fetched them and the Pages site stays small. Files without an entry are never touched.
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete reels whose post time has passed
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          p = 'reels/schedule.json'; S = json.load(open(p)) if os.path.exists(p) else {}
+          now = datetime.datetime.now(datetime.timezone.utc); keep = {}
+          for f, t in S.items():
+              due = datetime.datetime.fromisoformat(t.replace('Z', '+00:00')) + datetime.timedelta(hours=3)
+              if due < now:
+                  if os.path.exists(f'reels/{f}'): os.remove(f'reels/{f}'); print('deleted', f)
+              else: keep[f] = t
+          json.dump(keep, open(p, 'w'), indent=1)
+          PY
+          git config user.name "cleanup-bot"; git config user.email "cleanup-bot@users.noreply.github.com"
+          git add -A reels; git commit -qm "Remove posted reels" && git push -q || echo "nothing to clean"

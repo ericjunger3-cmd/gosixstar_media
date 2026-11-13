@@ -16,12 +16,22 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, datetime
+          now = datetime.datetime.now(datetime.timezone.utc); old = lambda t: datetime.datetime.fromisoformat(
+              t.replace('Z', '+00:00')) + datetime.timedelta(hours=3) < now
+          def drop(f):
+              if os.path.exists(f'reels/{f}'): os.remove(f'reels/{f}'); print('deleted', f)
+          # queue.json: delete a reel 3 h after it actually went live, not after its planned slot -
+          # a post that ran late must still find its file on the Pages site.
+          q = 'reels/queue.json'; Q = json.load(open(q)) if os.path.exists(q) else []
+          for e in Q:
+              if e.get('posted_at') and old(e['posted_at']): drop(e['file'])
+          json.dump([e for e in Q if not (e.get('posted_at') and old(e['posted_at']))], open(q, 'w'),
+                    ensure_ascii=False, indent=1)
+          # schedule.json: the old mechanism, kept for files queued before the switch.
           p = 'reels/schedule.json'; S = json.load(open(p)) if os.path.exists(p) else {}
-          now = datetime.datetime.now(datetime.timezone.utc); keep = {}
+          keep = {}
           for f, t in S.items():
-              due = datetime.datetime.fromisoformat(t.replace('Z', '+00:00')) + datetime.timedelta(hours=3)
-              if due < now:
-                  if os.path.exists(f'reels/{f}'): os.remove(f'reels/{f}'); print('deleted', f)
+              if old(t): drop(f)
               else: keep[f] = t
           json.dump(keep, open(p, 'w'), indent=1)
           PY

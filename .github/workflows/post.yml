@@ -1,0 +1,52 @@
+name: Post due reels to Instagram
+# Runs every 10 minutes and posts whatever in reels/queue.json is due. Independent of any
+# Claude session, so a usage limit or an outage cannot stop a scheduled reel from going out.
+# GitHub may drop or delay a scheduled run; because the queue is checked every 10 minutes and
+# each entry is marked "posted_at" once it is live, a missed run only delays a post, never skips it.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only show what would be posted (1 = yes)'
+        required: false
+        default: ''
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: igpost
+  cancel-in-progress: false
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Post due reels
+        id: post
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python3 scripts/post_reels.py
+      - name: Write the result back
+        if: always()
+        run: |
+          git config user.name "post-bot"; git config user.email "post-bot@users.noreply.github.com"
+          git add reels/queue.json
+          git diff --cached --quiet || { git commit -qm "Instagram: $(date -u +%H:%M) posted" && git push -q; }
+      - name: Report a failure
+        if: always() && (steps.post.outputs.report == '1' || steps.post.outcome == 'failure')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "Instagram post failed $(date -u +%F\ %H:%M)" \
+            --body "The posting workflow could not publish a due reel.
+
+          ${{ steps.post.outputs.summary }}
+
+          The entry stays in reels/queue.json and is retried every 10 minutes. If \`last_error\`
+          mentions the access token, renew IG_ACCESS_TOKEN in the repository secrets.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true

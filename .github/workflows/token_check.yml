@@ -1,0 +1,49 @@
+name: Check the Instagram token
+# Weekly health check. A dead or expired token would otherwise only show up when a reel is due
+# and then fails. This asks Instagram a harmless question and opens an issue if the answer is no.
+on:
+  schedule:
+    - cron: '41 7 * * 1'
+  workflow_dispatch:
+permissions:
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask Instagram who we are
+        id: check
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, urllib.parse, urllib.request
+          uid, tok = os.environ.get('IG_USER_ID', ''), os.environ.get('IG_ACCESS_TOKEN', '')
+          out = open(os.environ['GITHUB_OUTPUT'], 'a')
+          if not uid or not tok:
+              out.write('ok=0\nreason=IG_USER_ID or IG_ACCESS_TOKEN is not set\n'); sys.exit(0)
+          url = ('https://graph.facebook.com/v21.0/' + uid + '?' +
+                 urllib.parse.urlencode({'fields': 'username,followers_count', 'access_token': tok}))
+          try:
+              d = json.load(urllib.request.urlopen(url, timeout=30))
+              print('token fine:', d.get('username'), d.get('followers_count'), 'followers')
+              out.write('ok=1\n')
+          except Exception as e:
+              body = e.read().decode('utf-8', 'replace')[:300] if hasattr(e, 'read') else str(e)
+              out.write('ok=0\nreason=' + body.replace('\n', ' ')[:250] + '\n')
+          PY
+      - name: Open an issue if it is not
+        if: steps.check.outputs.ok != '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue list --state open --search "Instagram token in:title" --json number --jq 'length' | grep -q '^0$' || exit 0
+          gh issue create --title "Instagram token needs renewing" \
+            --body "The weekly check could not use IG_ACCESS_TOKEN.
+
+          Reason: ${{ steps.check.outputs.reason }}
+
+          Until this is fixed, no scheduled reel can be posted. Renew the token at
+          developers.facebook.com and update the IG_ACCESS_TOKEN secret of this repository."

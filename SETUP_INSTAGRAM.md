@@ -24,8 +24,24 @@ Zwei Repository-Secrets unter Settings - Secrets and variables - Actions:
 | `IG_USER_ID` | `17841453956595537` (die Instagram-Business-ID von @gosixstar) |
 | `IG_ACCESS_TOKEN` | Zugriffstoken mit der Berechtigung zum Veröffentlichen |
 
-Das Token holst du dir bei developers.facebook.com. Trag die Werte selbst ein -
-sie gehören nicht in einen Chat und nicht in eine Datei im Repository.
+Das Token holst du dir bei developers.facebook.com: App-Dashboard - Instagram -
+"API setup with Instagram business login" - bei @gosixstar auf "Generate token".
+Das Token gilt 60 Tage und lässt sich danach verlängern.
+
+Nötige Berechtigungen: Veröffentlichen (`instagram_content_publish` bzw.
+`instagram_business_content_publish`) und Kommentare (`instagram_manage_comments`) -
+ohne die zweite kommt das Reel raus, aber der erste Kommentar nicht.
+
+Kommt das Token aus "Instagram business login", lege zusätzlich unter Settings -
+Secrets and variables - Actions - Variables eine Variable `IG_API_BASE` mit dem Wert
+`https://graph.instagram.com/v21.0` an. Bei einem Token über Facebook-Login kannst du
+sie weglassen.
+
+Trag die Werte selbst ein - sie gehören nicht in einen Chat und nicht in eine Datei
+im Repository.
+
+Danach: Actions - "Check the Instagram token" - Run workflow. Läuft der grün durch,
+stimmt alles.
 
 ## Format von queue.json
 

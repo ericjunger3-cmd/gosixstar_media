@@ -17,6 +17,7 @@ jobs:
         env:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_API_BASE: ${{ vars.IG_API_BASE }}
         run: |
           python3 - <<'PY'
           import json, os, sys, urllib.parse, urllib.request
@@ -24,7 +25,8 @@ jobs:
           out = open(os.environ['GITHUB_OUTPUT'], 'a')
           if not uid or not tok:
               out.write('ok=0\nreason=IG_USER_ID or IG_ACCESS_TOKEN is not set\n'); sys.exit(0)
-          url = ('https://graph.facebook.com/v21.0/' + uid + '?' +
+          base = os.environ.get('IG_API_BASE') or 'https://graph.facebook.com/v21.0'
+          url = (base.rstrip('/') + '/' + uid + '?' +
                  urllib.parse.urlencode({'fields': 'username,followers_count', 'access_token': tok}))
           try:
               d = json.load(urllib.request.urlopen(url, timeout=30))

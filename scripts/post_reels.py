@@ -10,11 +10,13 @@ An entry is posted once its post_at has passed. On success the entry gets "poste
 Entries more than MAX_LATE hours overdue are skipped and reported, so a long outage cannot
 dump yesterday's reels into the feed at 3 in the morning.
 
-Env: IG_USER_ID, IG_ACCESS_TOKEN, optional PAGES_BASE, MAX_LATE (hours, default 6), DRY_RUN=1
+Env: IG_USER_ID, IG_ACCESS_TOKEN, optional IG_API_BASE, PAGES_BASE, MAX_LATE (hours, default 6), DRY_RUN=1
 """
 import json, os, sys, time, urllib.parse, urllib.request, datetime
 
-API = 'https://graph.facebook.com/v21.0'
+# Host depends on how the token was made: a Facebook-Login / Page token talks to graph.facebook.com,
+# a token from "Instagram business login" talks to graph.instagram.com. Set IG_API_BASE to switch.
+API = os.environ.get('IG_API_BASE', 'https://graph.facebook.com/v21.0').rstrip('/')
 UID = os.environ.get('IG_USER_ID', '').strip()
 TOK = os.environ.get('IG_ACCESS_TOKEN', '').strip()
 PAGES = os.environ.get('PAGES_BASE', 'https://ericjunger3-cmd.github.io/gosixstar_media').rstrip('/')

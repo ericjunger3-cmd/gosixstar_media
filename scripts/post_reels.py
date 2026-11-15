@@ -89,7 +89,12 @@ def main():
         print('no queue'); return 0
     Q = json.load(open(QUEUE))
     if not UID or not TOK:
-        print('IG_USER_ID / IG_ACCESS_TOKEN missing', file=sys.stderr); return 1
+        # Not an error: the secrets simply are not set up yet. Stay quiet so the
+        # workflow does not open an issue every run.
+        print('IG_USER_ID / IG_ACCESS_TOKEN not set - nothing to do')
+        if gh := os.environ.get('GITHUB_OUTPUT'):
+            open(gh, 'a').write('posted=0\nfailed=0\nlate=0\nreport=0\n')
+        return 0
 
     posted, failed, late, report = [], [], [], False
     for e in Q:
